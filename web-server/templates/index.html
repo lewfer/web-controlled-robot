@@ -1,0 +1,19 @@
+<html>
+    <head>
+      <!-- Jquery is useful to make some javascript simpler, e.g. the calls to the command urls -->
+      <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+      <title>Video Streaming Demonstration</title>
+    </head>
+    <body>
+      <h1>Video Streaming Demonstration</h1>
+      <!--This is where the video will go.  The browser will request the video stream from the specified url. -->
+      <img src="/video">
+      <br>
+      <!--These are the commands.  The browser will request the action using the specified url. -->
+      <a href="#" onclick="$.get('/control/forward')">Forward</a><br>
+      <a href="#" onclick="$.get('/control/backward')">Backward</a><br>
+      <a href="#" onclick="$.get('/control/left')">Left</a><br>       
+      <a href="#" onclick="$.get('/control/right')">Right</a><br>      
+      <a href="#" onclick="$.get('/control/stop')">Stop</a><br>      
+    </body>
+  </html>
