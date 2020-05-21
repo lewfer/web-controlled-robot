@@ -4,26 +4,16 @@
 #
 # Implements a class that can be used by the web page to stream video images from the Rasbperry Pi camera.
 #
-# Requires installation of OpenCV and numpy
-# Installation of OpenCV on the Raspberry Pi can be a bit problematic.
-# See my web page for details
 #
 
 # Includes
 # -------------------------------------------------------------------------------------------------
 
-# picamera.array allows us to get camera output into a numpy array
-# This will facilitate manipulation of the image if we want to
-from picamera.array import PiRGBArray
-
 # Allows use of the Raspberry Pi camera
 from picamera import PiCamera
 
-# Numpy, for holding image data
-import numpy as np
-
-# OpenCV for image manipulation
-import cv2
+# Library for dealing with stream io
+import io
 
 # Threading library, so our code can run multiple things at the same time
 import threading
@@ -34,10 +24,11 @@ from time import sleep
 # Constants
 # -------------------------------------------------------------------------------------------------
 
-RESOLUTION = (320,240)      # camera resolution
+#RESOLUTION = (320,240)      # camera resolution
+RESOLUTION = (640,480)      # camera resolution
 ROTATION = 180              # camera rotation
 JPEGQUALITY = 90            # 0 to 100, higher is better quality but more data
-FPS = 20                    # video frames per second.  Reduce if bandwidth is an issue, increase if quality is an issue
+FPS = 15                    # video frames per second.  Reduce if bandwidth is an issue, increase if quality is an issue
 
 
 # Class definition
@@ -45,11 +36,11 @@ FPS = 20                    # video frames per second.  Reduce if bandwidth is a
 
 class VideoPlayer(object):
 
-    def __init__(self):
+    def __init__(self, resolution=RESOLUTION, rotation=ROTATION):
         # Set up the camera attributes according to your needs
         self.camera = PiCamera()
-        self.camera.resolution = RESOLUTION
-        self.camera.rotation = ROTATION
+        self.camera.resolution = resolution
+        self.camera.rotation = rotation
         self.camera.hflip = True
         self.camera.vflip = True
 
@@ -72,7 +63,7 @@ class VideoPlayer(object):
             sleep(0)
 
     def _runCamera(self):
-        # Function to set the camera off generating frame data
+        """Function to set the camera off generating frame data"""
 
         # Start the camera generating frames
         framesIterator = self._generateFrames()
@@ -85,33 +76,39 @@ class VideoPlayer(object):
         self.thread = None
 
     def _generateFrames(self):
-        # This is a generator function that can be used by a loop to get one frame at a time
+        """This is a generator function that can be used by a loop to get one frame at a time"""
 
         # Create a buffer to hold the image data
-        buffer = PiRGBArray(self.camera, size=self.camera.resolution)
+        stream = io.BytesIO()
 
         # Start capturing frames as a stream
-        stream = self.camera.capture_continuous(buffer, format="bgr", use_video_port=True)
+        cap = self.camera.capture_continuous(stream, format="jpeg", use_video_port=True, quality=self.jpegQuality)
 
         # For each frame captured, return it to the calling loop
-        for frame in stream:
-            yield frame.array
-            buffer.truncate(0)            
+        for foo in cap:
+            # store frame
+            stream.seek(0)
+            frame = stream.read()
+
+            yield frame
+
+            # reset stream for next frame
+            stream.seek(0)
+            stream.truncate()       
 
 
     def _getFrame(self):     
-        # Return the last frame read, if there is one
-
+        """Return the last frame read, if there is one"""
+        
         if self.lastFrame is None:
             return None
         else:
-            result, encodedFrame = cv2.imencode('.jpg', self.lastFrame, [int(cv2.IMWRITE_JPEG_QUALITY), self.jpegQuality])
-            return encodedFrame.tostring()      
+            return self.lastFrame 
 
 
     def genVideo(self):    
-        # This is a generator function.  We can call it in a loop and it returns one frame at a time.
-        # Note how it loops forever (while True).  It never stops returning frames
+        """This is a generator function.  We can call it in a loop and it returns one frame at a time.
+           Note how it loops forever (while True).  It never stops returning frames"""
 
         while True:
             # Limit the frames per second
